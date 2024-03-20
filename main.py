@@ -1,9 +1,7 @@
 from matplotlib import pyplot as plt
-import math
-import scipy
+from typing import List, Optional, Tuple
 import numpy as np
 import random
-from typing import List, Optional, Tuple
 import matplotlib.pyplot as plt
 
 class Homework2:
@@ -25,16 +23,17 @@ class Homework2:
     
     def __init__(self) -> None:
         
-        
+        # Generate a list with x-coordinates of 600 scattering points,
+        # and a list with 601 distances between scattering points.
         self.scattering_points, self.distances = self.generate_scattering_points_and_free_space()
         
         # Define alpha
-        self.alpha = 0
+        self.alpha = 0.035
         
         # Generate the k_m vector
         self.k_m = self.generate_k_m()
         
-        # Generate the 599 p_n matrices
+        # Generate the 601 p_n matrices
         self.p_n = self.generate_p_n()
 
         # Generate the scattering matrix.
@@ -201,7 +200,7 @@ class Homework2:
 
         Returns:
             Tuple[List[float], List[float]]: A tuple containing two lists.
-                The first list contains randomly generated coordinates.
+                The first list contains randomly generated x-coordinates.
                 The second list contains the distances between consecutive coordinates.
         """
 
@@ -217,11 +216,28 @@ class Homework2:
         coordinates = np.array(coordinates)
         coordinates.sort()
         
+        nr_coordinates = len(coordinates)
         # Calculate distances between consecutive coordinates
-        for index in range(1, len(coordinates)):
-            distance = coordinates[index] - coordinates[index - 1]
-            distances.append(distance)
-        
+        for index in range(0, nr_coordinates):
+            
+            if index == 0:
+                # Append the distance between x=0 and 
+                # the first scattering point.
+                distance = coordinates[0]
+                distances.append(distance)
+            else:    
+
+                # Calculate the distance between i-th scattering point
+                # and the previous scattering point.
+                distance = coordinates[index] - coordinates[index - 1]
+                distances.append(distance)
+                
+                # If the i-th scattering point is the last, calculate
+                # the distance from it to the last x-coordinate 60.000.
+                if index == nr_coordinates - 1:
+                    distance = 60000 - coordinates[i]
+                    distances.append(distance)
+
         distances = np.array(distances)
         
         return coordinates, distances  # Return the generated coordinates and distances
