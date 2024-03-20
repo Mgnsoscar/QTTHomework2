@@ -45,9 +45,17 @@ class Homework2:
         
         self.total_scattering_matrix = self.calculate_total_scattering_matrix()
         
+        # Visualize a matrix containing sub-matrices. Complex values are converted
+        # to magnitude
         Functions.visualize_matrix_of_matrices(
-            self.p_n[0],
-            "Free space matrix $P_1$"
+            self.total_scattering_matrix,
+            f"Total scattering matrix - $\\alpha = {self.alpha}$"
+        )
+        # Visualize a matrix containing sub-matrices. Real and imaginary
+        # parts of the sub-matrices are plotted individually
+        Functions.visualize_matrix_of_matrices_complex(
+            self.total_scattering_matrix,
+            f"Total scattering matrix matrix - $\\alpha = {self.alpha}$"
         )
             
     def calculate_total_scattering_matrix(self) -> np.ndarray:
