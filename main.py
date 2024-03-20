@@ -43,6 +43,7 @@ class Homework2:
         # Generate the transfer matrix from the scattering matrix.
         self.transfer_matrix = self.convert_S_to_M(self.scattering_matrix)
         
+        # Generate the total scattering matrix
         self.total_scattering_matrix = self.calculate_total_scattering_matrix()
         
         # Visualize a matrix containing sub-matrices. Complex values are converted
