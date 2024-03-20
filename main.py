@@ -287,57 +287,50 @@ class Homework2:
 
 
 class Functions:
-      
+    
     @staticmethod
-    def visualize_matrix(mat):
-        # Plot the absolute values of the complex matrix
+    def visualize_matrix(mat: np.ndarray) -> None:
+        """
+        Visualize a matrix.
+
+        This method plots the absolute values of the input matrix.
+
+        Args:
+            mat (np.ndarray): The input matrix.
+        """
         plt.imshow(np.abs(mat), cmap='viridis')
-        plt.colorbar(label='Absolute Value')  # Add color bar to show the scale
-        plt.show()   
-    @staticmethod     
-    def randint_x_chance_for_target( 
-        chance: float, 
-        target: int, 
-        interval: Optional[Tuple[int]] = (1, 30)
-    ) -> int:
-        
-        # Generate a random number between 1 and 100
+        plt.colorbar(label='Absolute Value')
+        plt.show()
+
+    @staticmethod
+    def randint_x_chance_for_target(chance: float, target: int, interval: Optional[Tuple[int]] = (1, 30)) -> int:
+        """
+        Generate a random integer with a certain chance of being the target.
+
+        This method generates a random integer within the specified interval
+        with a given probability for it to be the target number.
+
+        Args:
+            chance (float): The probability of generating the target number.
+            target (int): The target number.
+            interval (Tuple[int], optional): The interval for generating random numbers. Defaults to (1, 30).
+
+        Returns:
+            int: The randomly generated integer.
+        """
         random_percentage = random.uniform(0, 1)
-        
-        # Given probability for the number to be the target number
         if random_percentage <= chance:
-            
             return target
-        
         else:
-            # Remaining probability for other numbers (excluding target)
             while True:
                 random_number = random.randint(*interval)
                 if random_number != target:
                     return random_number
+
     @staticmethod
-    def visualize_matrix_of_matrices(matrices: np.ndarray, title: str):
-        num_rows, num_cols = matrices.shape[0], matrices.shape[1]  # Assuming matrices is a 2D numpy array
-        fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, 5))  # Adjust figsize as needed
-        
-        for i in range(num_rows):
-            for j in range(num_cols):
-                im = axs[i, j].imshow(np.abs(matrices[i, j]), cmap='viridis')  # Plot all matrices at position (i, j)
-                #axs[i, j].set_title(f'$P_{{n_{{x_{i+1}y_{j+1} }}}}$')
-                axs[0, 0].set_title("t - Magnitude")
-                axs[0, 1].set_title("r' - Magnitude")
-                axs[1, 0].set_title("r - Magnitude")
-                axs[1, 1].set_title("t' - Magnitude")
-                axs[i, j].axis('on')  # Turn off axis labels
-                fig.colorbar(im, ax=axs[i, j], label="Magnitude")  # Add colorbar
-
-        fig.suptitle(title)
-        plt.tight_layout()
-        plt.show()
-
-    def visualize_matrix_of_matrices_complex(matrices, title: str):
+    def visualize_matrix_of_matrices(matrices: np.ndarray, title: str) -> None:
         """
-        Visualizes a matrix of matrices.
+        Visualize a matrix of matrices.
 
         This method plots a matrix of matrices, where each element of the input
         matrices array is a matrix itself.
@@ -346,36 +339,49 @@ class Functions:
             matrices (np.ndarray): The input matrix of matrices.
             title (str): The title of the plot.
         """
-        num_rows, num_cols = matrices.shape[0], matrices.shape[1]  # Assuming matrices is a 2D numpy array
-        fig, axs = plt.subplots(num_rows, num_cols * 2, figsize=(20, 20))  # Double the number of columns
+        num_rows, num_cols = matrices.shape[0], matrices.shape[1]
+        fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, 5))
         
         for i in range(num_rows):
             for j in range(num_cols):
-                # Plot magnitude of complex values
-                im_mag = axs[i, 2*j].imshow(np.real(matrices[i, j]), cmap='viridis')
-                axs[0, 2*0].set_title("t - Real Part")
-                axs[0, 2*1].set_title("r' - Real Part")
-                axs[1, 2*0].set_title("r - Real Part")
-                axs[1, 2*1].set_title("t' - Real Part")
-
-                
-                axs[i, 2*j].axis('on')
-                fig.colorbar(im_mag, ax=axs[i, 2*j], label="", shrink=0.45)
-                
-                # Plot imaginary part of complex values
-                im_imag = axs[i, 2*j+1].imshow(np.imag(matrices[i, j]), cmap='viridis')
-                axs[0, 2*0+1].set_title("t - Imaginary Part")
-                axs[0, 2*1+1].set_title("r' - Imaginary Part")
-                axs[1, 2*0+1].set_title("r - Imaginary Part")
-                axs[1, 2*1+1].set_title("t' - Imaginary Part")
-                
-                axs[i, 2*j+1].axis('on')
-                fig.colorbar(im_imag, ax=axs[i, 2*j+1], label="", shrink=0.45)
+                im = axs[i, j].imshow(np.abs(matrices[i, j]), cmap='viridis')
+                axs[i, j].axis('off')
+                fig.colorbar(im, ax=axs[i, j], label="Magnitude")
         
-        fig.suptitle(title)  # Set the overall title of the plot
+        fig.suptitle(title)
         plt.tight_layout()
         plt.show()
-   
+
+    @staticmethod
+    def visualize_matrix_of_matrices_complex(matrices: np.ndarray, title: str) -> None:
+        """
+        Visualize a matrix of complex matrices.
+
+        This method plots a matrix of matrices, where each element of the input
+        matrices array is a complex matrix itself.
+
+        Args:
+            matrices (np.ndarray): The input matrix of complex matrices.
+            title (str): The title of the plot.
+        """
+        num_rows, num_cols = matrices.shape[0], matrices.shape[1]
+        fig, axs = plt.subplots(num_rows, num_cols * 2, figsize=(20, 20))
+        
+        for i in range(num_rows):
+            for j in range(num_cols):
+                # Plot real part
+                im_real = axs[i, 2*j].imshow(np.real(matrices[i, j]), cmap='viridis')
+                axs[i, 2*j].axis('off')
+                fig.colorbar(im_real, ax=axs[i, 2*j], label="Real Part", shrink=0.45)
+                
+                # Plot imaginary part
+                im_imag = axs[i, 2*j+1].imshow(np.imag(matrices[i, j]), cmap='viridis')
+                axs[i, 2*j+1].axis('off')
+                fig.colorbar(im_imag, ax=axs[i, 2*j+1], label="Imaginary Part", shrink=0.45)
+        
+        fig.suptitle(title)
+        plt.tight_layout()
+        plt.show()
         
            
 if __name__ == "__main__":
