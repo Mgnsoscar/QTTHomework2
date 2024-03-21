@@ -618,7 +618,7 @@ class Resources:
             fontdict=font
         )
         plt.title(
-            f'Conductance pr. iteration - $\\alpha$ = 0', 
+            f'Conductance pr. iteration - $\\alpha$ = 0.035', 
             fontsize=35, 
             fontdict=font, 
             y=1.05
@@ -805,7 +805,7 @@ if __name__ == "__main__":
     #    iterations = 200, 
     #    name = "200_alpha_0_035"
     #)
-    
+    Resources.plot_conductances(Resources.get_saved_plot("200_alpha_0_035"), normalized=False)
     # Initialize with alpha = 0.035
     #alpha_0 = Task2(alpha = 0)
     
@@ -814,6 +814,6 @@ if __name__ == "__main__":
     #    iterations = 3, 
     #    name = "200_alpha_0"
     #)
-    Resources.plot_conductances(Resources.get_saved_plot("200_alpha_0_035"), normalized=False)
+
     
 
