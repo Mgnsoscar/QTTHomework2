@@ -1,1 +1,0 @@
-# QTTHomework2
