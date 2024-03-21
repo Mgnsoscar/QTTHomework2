@@ -3,6 +3,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+from scipy import constants as cnst
+from copy import copy
 
 class Homework2:
     
@@ -21,14 +23,21 @@ class Homework2:
         "total_scattering_matrix"
     ]
     
-    def __init__(self) -> None:
+    def __init__(self, alpha: Optional[float] = 0.035) -> None:
+        """
+        Initializes the Homework2 object.
+
+        Args:
+            **kwargs: Additional keyword arguments. 
+                alpha (float, optional): Value of alpha parameter. Defaults to 0.035.
+        """
         
         # Generate a list with x-coordinates of 600 scattering points,
         # and a list with 601 distances between scattering points.
         self.scattering_points, self.distances = self.generate_scattering_points_and_free_space()
         
         # Define alpha
-        self.alpha = 0.035
+        self.alpha = alpha
         
         # Generate the k_m vector
         self.k_m = self.generate_k_m()
@@ -38,33 +47,143 @@ class Homework2:
 
         # Generate the scattering matrix.
         self.scattering_matrix = self.generate_scattering_matrix()
+
+        #self.total_scattering_matrix = self.calculate_total_scattering_matrix()
         
-        # Generate the transfer matrix from the scattering matrix.
-        self.transfer_matrix = self.convert_S_to_M(self.scattering_matrix)
-        
-        # Generate the total scattering matrix
-        self.total_scattering_matrix = self.calculate_total_scattering_matrix()
+        self.total_scattering_matrix = self.smack_together_two_scattering_matrices(
+            self.scattering_matrix, self.p_n[-1]
+        )
+        self.total_scattering_matrix = self.smack_together_two_scattering_matrices(
+            self.p_n[-2], self.total_scattering_matrix
+        )
         
         # Visualize a matrix containing sub-matrices. Complex values are converted
         # to magnitude
-        Functions.visualize_matrix_of_matrices(
-            self.total_scattering_matrix,
-            f"Total scattering matrix - $\\alpha = {self.alpha}$"
-        )
+        #Functions.visualize_matrix_of_matrices(
+        #    self.total_scattering_matrix,
+        #    f"Total scattering matrix - $\\alpha = {self.alpha}$"
+        #)
         # Visualize a matrix containing sub-matrices. Real and imaginary
         # parts of the sub-matrices are plotted individually
         Functions.visualize_matrix_of_matrices_complex(
             self.total_scattering_matrix,
             f"Total scattering matrix matrix - $\\alpha = {self.alpha}$"
         )
-            
+    
+    @staticmethod
+    def smack_together_two_scattering_matrices(m_1: np.ndarray, m_2: np.ndarray) -> np.ndarray:
+        """
+        Combine two scattering matrices into a single total scattering matrix.
+
+        Parameters:
+            m_1 (np.ndarray): Scattering matrix 1.
+            m_2 (np.ndarray): Scattering matrix 2.
+
+        Returns:
+            np.ndarray: Total scattering matrix.
+        """    
+        
+        # Extract the transmission and reflection coeff. matrices of both matrices
+        
+        t_1 = m_1[0][0]  # Transmission coefficient t_1 matrix
+        rp_1 = m_1[1][0]  # Reflection coefficients r_1' matrix
+        r_1 = m_1[0][1]  # Reflection coefficients r_1 matrix
+        tp_1 = m_1[1][1]  # Transmission coefficients t_1' matrix
+        
+        t_2 = m_2[0][0]  # Transmission coefficient t_2 matrix
+        rp_2 = m_2[1][0]  # Reflection coefficients r_2' matrix
+        r_2 = m_2[0][1]  # Reflection coefficients r_2 matrix
+        tp_2 = m_2[1][1]  # Transmission coefficients t_2' matrix
+
+        # Calculate the total coefficients
+        t_tot = np.matmul(
+            t_2,
+            np.matmul(
+                np.linalg.pinv(
+                    1 - np.matmul(
+                        rp_1, 
+                        r_2
+                    )
+                ),
+                t_1
+            )
+        )
+        r_tot = (
+            r_1 + 
+            np.matmul(
+                tp_1,
+                np.matmul(
+                    r_2,
+                    np.matmul(
+                        np.linalg.pinv(
+                            1 - np.matmul(
+                                rp_1,
+                                r_2
+                            )
+                        ),
+                        t_1
+                    )
+                )
+            )
+        )
+        tp_tot = (
+            np.matmul(
+                tp_1,
+                np.matmul(
+                    r_2,
+                    np.matmul(
+                        np.linalg.pinv(
+                            1 - np.matmul(
+                                rp_1,
+                                r_2
+                            )
+                        ),
+                        np.matmul(
+                            rp_1,
+                            tp_2
+                        )
+                    )
+                )
+            )
+            + np.matmul(
+                tp_1, 
+                tp_2
+            )
+        )
+        rp_tot = (
+            np.matmul(
+                t_2,
+                np.matmul(
+                    np.linalg.pinv(
+                        1 - np.matmul(
+                            rp_1,
+                            r_2
+                        )
+                    ),
+                    np.matmul(
+                        rp_1,
+                        tp_2
+                    )
+                )
+            )
+            + rp_2
+        )
+        
+        # Generate the total scattering matrix
+        S_tot = np.array([
+            [t_tot, rp_tot],
+            [r_tot, tp_tot]
+        ])
+        
+        return S_tot
+        
     def calculate_total_scattering_matrix(self) -> np.ndarray:
         """
-        Calculates the total scattering matrix.
+        Calculates the total scattering matrix through the channel.
 
         This method calculates the total scattering matrix by performing
-        a series of matrix multiplications involving the transfer matrix
-        and the previously generated p_n matrices.
+        a series of mathematical operations on the p_n and scattering matrices 
+        as found in task 2a) from the problem set.
 
         Returns:
             np.ndarray: The total scattering matrix.
@@ -72,29 +191,29 @@ class Homework2:
         p_n = self.p_n
         p_n.reverse()  # Reverse the order of p_n matrices for calculation
         
-        subcalculation = None
-        nr_calculations = 0
-        
+        S_tot = None
+        first_calculation = True
         for p in p_n:
             
-            if nr_calculations == 0:
+            if first_calculation:
                 # If first iteration, just add the last p matrix to subcalculation.
-                subcalculation = p
+                S_tot = p
+                first_calculation = False
             else: 
                 # Matrix multiply the current p matrix with the product 
                 # of the previous calculations.
-                subcalculation = np.matmul(p, subcalculation)
+                S_tot = self.smack_together_two_scattering_matrices(
+                    m_1 = p, m_2 = S_tot
+                )
                 
             # Perform matrix multiplication with the transfer matrix and the
             # product of the previous calculations.
-            subcalculation = np.matmul(self.transfer_matrix, subcalculation)
-            
-            nr_calculations += 1
-        
-        total_scattering_matrix = subcalculation
-        
+            S_tot = self.smack_together_two_scattering_matrices(
+                m_1 = self.scattering_matrix, m_2 = S_tot
+            )
+
         # Return the total scattering matrix
-        return total_scattering_matrix
+        return S_tot
 
     def generate_scattering_matrix(self) -> np.ndarray:
         """
@@ -131,69 +250,9 @@ class Homework2:
         ])
         
         return S
-  
+     
     @staticmethod
-    def convert_S_to_M(S: np.ndarray) -> np.ndarray:
-        """
-        Converts a scattering matrix S to a transfer matrix M.
-
-        Args:
-            S (np.ndarray): The scattering matrix S with shape (2, 2, 30, 30).
-                S[0, 0] corresponds to the transmission coefficient t,
-                S[0, 1] corresponds to the reflection coefficient r',
-                S[1, 0] corresponds to the reflection coefficient r,
-                and S[1, 1] corresponds to the transmission coefficient t'.
-
-        Returns:
-            np.ndarray: The transfer matrix M with shape (2, 2, 30, 30).
-                M[0, 0] corresponds to the transmission coefficients,
-                M[0, 1] corresponds to the forward transfer coefficients,
-                M[1, 0] corresponds to the reverse transfer coefficients,
-                and M[1, 1] corresponds to the inverse transmission coefficients.
-        """
-
-        # Extract individual components from the scattering matrix
-        t = S[0][0]    # Transmission coefficients
-        tp = S[1][1]   # Inverse transmission coefficients
-        r = S[1][0]    # Reverse transfer coefficients
-        rp = S[0][1]   # Forward transfer coefficients
-        
-        # Calculate elements of the transfer matrix
-        x1_y1 = (
-            tp
-            - np.matmul(
-                r,
-                np.matmul(
-                    np.linalg.pinv(t),
-                    rp                
-                )
-            )
-        ) 
-        x2_y1 = (
-            np.matmul(
-                r,
-                np.linalg.pinv(t)
-            )
-        ) 
-        x1_y2 = (
-            -np.matmul(
-                np.linalg.pinv(t),
-                rp
-            )
-        )
-        x2_y2 = (
-            np.linalg.pinv(t)
-        )
-        
-        # Construct the transfer matrix M
-        M = np.array([
-            [x1_y1, x2_y1],
-            [x1_y2, x2_y2]
-        ])
-        
-        return M
-  
-    def generate_scattering_points_and_free_space(self) -> Tuple[List[float], List[float]]:
+    def generate_scattering_points_and_free_space() -> Tuple[List[float], List[float]]:
         """
         Generates random coordinates for scattering points and distances of 
         free space between them.
@@ -276,7 +335,8 @@ class Homework2:
 
         return matrices   
 
-    def generate_k_m(self) -> List[float]:
+    @staticmethod
+    def generate_k_m() -> List[float]:
         """
         Generates a list containing the wavenumbers for a set of modes.
 
@@ -294,13 +354,6 @@ class Homework2:
             k_m.append(k_i)  # Append the wavenumber to the list
         
         return k_m  # Return the list of wavenumbers
- 
-
-
-
-
-
-
 
 class Functions:
     
@@ -399,7 +452,128 @@ class Functions:
         plt.tight_layout()
         plt.show()
         
-           
-if __name__ == "__main__":
     
-    homework = Homework2()
+class Task1:
+    
+    C_L: float
+    C_R: float
+    C_g1: float
+    C_g2: float
+    C_12: float
+    E_C: np.ndarray
+    N_1: int
+    N_2: int
+    
+    def __init__(self) -> None:
+        
+        self.gen_Cs()
+        self.E_C = self.gen_E_C()
+        self.task_a()
+    
+    def task_a(self):
+        
+        # Calculate q's
+        
+        V_L = np.zeros((200, ))
+        V_R = np.zeros((200, ))
+        V_g1 = np.linspace(-.1, .10, 200)
+        V_g2 = np.linspace(-.10, .10, 200)      
+        
+        matrix = np.array([
+            [self.C_L, self.C_g1, 0, 0],
+            [0, 0, self.C_g2, self.C_R]
+        ])
+        
+        vector = np.array([
+            V_L, V_g1, V_g2, V_R
+        ]) 
+                
+        q_n = np.dot(
+            matrix, vector
+        )  
+        
+        q_1, q_2 = q_n[0], q_n[1]
+        
+        U = 0
+        
+        N = [np.ones(q_1.shape), np.ones(q_2.shape)]
+        N_1s = [0, 1, 2]
+        N_2s = [0, 1, 2]
+        
+        plt.figure(figsize=(8, 6))
+        
+        for N_1 in N_1s:
+            
+            U = 0
+            
+            for N_2 in N_2s:
+                
+                for i in range(2):
+                    
+                    for j in range(2):
+                    
+                        U += (
+                            self.E_C[i][j]
+                            * (N[i] * N_1 - q_n[i]/cnst.elementary_charge)
+                            * (N[j] * N_2 - q_n[j]/cnst.elementary_charge)
+                            )
+                        
+                plt.plot(U, U)
+        
+
+        
+        
+
+        plt.xlabel('V_g2')
+        plt.ylabel('V_g1')
+        plt.title('q_1 plot')
+        plt.show()
+
+        
+                
+                
+    
+    def gen_Cs(self):
+        
+        self.C_L = (
+            0.2 
+          * np.abs(cnst.elementary_charge) 
+          * 1e-3
+        )
+        
+        self.C_R = copy(self.C_L)
+        
+        self.C_g1 = (
+            0.3
+          * np.abs(cnst.elementary_charge)
+          * 1e-3
+        )
+        self.C_g2 = copy(self.C_g1)
+        
+        self.C_12 = 0
+    
+        self.C_1 = self.C_L + self.C_g1 + self.C_12
+        self.C_2 = copy(self.C_1)
+    
+    def gen_E_C(self):
+        
+        fraction = (
+            np.square(cnst.elementary_charge)
+          / (
+                2 * (self.C_1*self.C_2 - np.square(self.C_12))
+            )
+        )
+        
+        matrix = np.array([
+            [self.C_2, self.C_12],
+            [self.C_12, self.C_1]
+        ])
+        
+        E_C = fraction * matrix
+        
+        return E_C
+    
+if __name__ == "__main__":
+     
+    #task1 = Task1()
+    homework = Homework2(alpha = 0.035)
