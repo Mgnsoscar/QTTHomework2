@@ -43,33 +43,52 @@ class Homework2:
         self.k_m = self.generate_k_m()
         
         # Generate the 601 p_n matrices
-        self.p_n = self.generate_p_n()
+        #self.p_n = self.generate_p_n(self.distances)
 
         # Generate the scattering matrix.
         self.scattering_matrix = self.generate_scattering_matrix()
 
-        #self.total_scattering_matrix = self.calculate_total_scattering_matrix()
+        #self.total_scattering_matrix = self.calculate_total_scattering_matrix(self.p_n)
         
-        self.total_scattering_matrix = self.smack_together_two_scattering_matrices(
-            self.scattering_matrix, self.p_n[-1]
-        )
-        self.total_scattering_matrix = self.smack_together_two_scattering_matrices(
-            self.p_n[-2], self.total_scattering_matrix
-        )
+        #self.calculate_conductance_from_scattering_matrix(self.total_scattering_matrix)
+        self.iterate_200_times_random_coordinates()
         
-        # Visualize a matrix containing sub-matrices. Complex values are converted
-        # to magnitude
-        #Functions.visualize_matrix_of_matrices(
-        #    self.total_scattering_matrix,
-        #    f"Total scattering matrix - $\\alpha = {self.alpha}$"
-        #)
-        # Visualize a matrix containing sub-matrices. Real and imaginary
-        # parts of the sub-matrices are plotted individually
-        Functions.visualize_matrix_of_matrices_complex(
-            self.total_scattering_matrix,
-            f"Total scattering matrix matrix - $\\alpha = {self.alpha}$"
-        )
+    @staticmethod
+    def calculate_conductance_from_scattering_matrix(S: np.ndarray) -> float:
+        
+        t = S[1][1]
+        t_dagger = np.conjugate(t).T
+        
+        T = np.matmul(t_dagger, t)
+        T_n = np.real(np.linalg.eigvals(T))
+        
+        conductance = np.sum(T_n)
+
+        print(conductance)
+
+        return conductance
     
+    def iterate_200_times_random_coordinates(self):
+        
+        conductances = []
+        iterations = []
+        
+        for i in range(50):
+            s_points, dist = self.generate_scattering_points_and_free_space()
+            p_n = self.generate_p_n(dist)
+            total_S_matrix = self.calculate_total_scattering_matrix(p_n)
+            conductance = self.calculate_conductance_from_scattering_matrix(total_S_matrix)
+            conductances.append(conductance)
+            iterations.append(i+1)
+        
+        # Plot conductances versus iterations
+        plt.scatter(iterations, conductances, marker='o', linestyle='-')
+        plt.xlabel('Iterations')
+        plt.ylabel('Conductance')
+        plt.title('Conductance vs Iterations')
+        plt.grid(True)
+        plt.show()
+              
     @staticmethod
     def smack_together_two_scattering_matrices(m_1: np.ndarray, m_2: np.ndarray) -> np.ndarray:
         """
@@ -99,8 +118,8 @@ class Homework2:
         t_tot = np.matmul(
             t_2,
             np.matmul(
-                np.linalg.pinv(
-                    1 - np.matmul(
+                np.linalg.inv(
+                    np.eye(30) - np.matmul(
                         rp_1, 
                         r_2
                     )
@@ -115,8 +134,8 @@ class Homework2:
                 np.matmul(
                     r_2,
                     np.matmul(
-                        np.linalg.pinv(
-                            1 - np.matmul(
+                        np.linalg.inv(
+                            np.eye(30) - np.matmul(
                                 rp_1,
                                 r_2
                             )
@@ -132,8 +151,8 @@ class Homework2:
                 np.matmul(
                     r_2,
                     np.matmul(
-                        np.linalg.pinv(
-                            1 - np.matmul(
+                        np.linalg.inv(
+                            np.eye(30) - np.matmul(
                                 rp_1,
                                 r_2
                             )
@@ -154,8 +173,8 @@ class Homework2:
             np.matmul(
                 t_2,
                 np.matmul(
-                    np.linalg.pinv(
-                        1 - np.matmul(
+                    np.linalg.inv(
+                        np.eye(30) - np.matmul(
                             rp_1,
                             r_2
                         )
@@ -177,7 +196,7 @@ class Homework2:
         
         return S_tot
         
-    def calculate_total_scattering_matrix(self) -> np.ndarray:
+    def calculate_total_scattering_matrix(self, p_n) -> np.ndarray:
         """
         Calculates the total scattering matrix through the channel.
 
@@ -188,7 +207,6 @@ class Homework2:
         Returns:
             np.ndarray: The total scattering matrix.
         """
-        p_n = self.p_n
         p_n.reverse()  # Reverse the order of p_n matrices for calculation
         
         S_tot = None
@@ -226,7 +244,6 @@ class Homework2:
                 S[1, 0] corresponds to the reflection coefficient r',
                 and S[1, 1] corresponds to the transmission coefficient t'.
         """
-
         # Generate the matrix with complex entries
         matrix = (
             np.eye(60)  # Identity matrix with shape (60, 60)
@@ -300,8 +317,8 @@ class Homework2:
         distances = np.array(distances)
         
         return coordinates, distances  # Return the generated coordinates and distances
-             
-    def generate_p_n(self) -> List[np.ndarray]:
+    
+    def generate_p_n(self, distances: List[float]) -> List[np.ndarray]:
         """
         Generates a list of matrices for a given set of distances.
 
@@ -313,7 +330,7 @@ class Homework2:
 
         matrices = []  # Initialize an empty list to store matrices
         
-        for distance in self.distances:  # Iterate over distances
+        for distance in distances:  # Iterate over distances
             
             # Initialize submatrices with complex zeros
             x1_y1 = np.zeros((30, 30), dtype=np.complex128)
@@ -408,15 +425,23 @@ class Functions:
             matrices (np.ndarray): The input matrix of matrices.
             title (str): The title of the plot.
         """
+        
+        subplot_titles = [
+            ['$t_{tot}$', "$r'_{tot}$"],
+            ["$r_{tot}$", "$t'_{tot}$"]
+        ]
+        
         num_rows, num_cols = matrices.shape[0], matrices.shape[1]
-        fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, 5))
+        fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, 8))
         
         for i in range(num_rows):
             for j in range(num_cols):
                 im = axs[i, j].imshow(np.abs(matrices[i, j]), cmap='viridis')
                 axs[i, j].axis('off')
-                fig.colorbar(im, ax=axs[i, j], label="Magnitude")
-        
+                axs[i, j].set_title(subplot_titles[i][j])
+                cbar = fig.colorbar(im, ax=axs[i, j], label="Magnitude")
+                cbar.ax.yaxis.get_offset_text().set_fontsize(5)
+                
         fig.suptitle(title)
         plt.tight_layout()
         plt.show()
@@ -433,20 +458,32 @@ class Functions:
             matrices (np.ndarray): The input matrix of complex matrices.
             title (str): The title of the plot.
         """
+        subplot_titles = [
+            ['$t_{tot}$', "$r'_{tot}$"],
+            ["$r_{tot}$", "$t'_{tot}$"]
+        ]
+        
         num_rows, num_cols = matrices.shape[0], matrices.shape[1]
-        fig, axs = plt.subplots(num_rows, num_cols * 2, figsize=(20, 20))
+        fig, axs = plt.subplots(num_rows, num_cols * 2, figsize=(15, 30))
+        
         
         for i in range(num_rows):
             for j in range(num_cols):
                 # Plot real part
                 im_real = axs[i, 2*j].imshow(np.real(matrices[i, j]), cmap='viridis')
                 axs[i, 2*j].axis('off')
-                fig.colorbar(im_real, ax=axs[i, 2*j], label="Real Part", shrink=0.45)
+                cbar_r = fig.colorbar(im_real, ax=axs[i, 2*j], label="Real Part", shrink=0.45)
+                cbar_r.ax.yaxis.get_offset_text().set_fontsize(5)
                 
                 # Plot imaginary part
                 im_imag = axs[i, 2*j+1].imshow(np.imag(matrices[i, j]), cmap='viridis')
                 axs[i, 2*j+1].axis('off')
-                fig.colorbar(im_imag, ax=axs[i, 2*j+1], label="Imaginary Part", shrink=0.45)
+                cbar_i = fig.colorbar(im_imag, ax=axs[i, 2*j+1], label="Imaginary Part", shrink=0.45)
+                cbar_i.ax.yaxis.get_offset_text().set_fontsize(5)
+                
+                # Set subplot titles
+                axs[i, 2*j].set_title(f"$Re${{{subplot_titles[i][j]}}}")
+                axs[i, 2*j+1].set_title(f"$Im${{{subplot_titles[i][j]}}}")
         
         fig.suptitle(title)
         plt.tight_layout()
@@ -576,4 +613,9 @@ class Task1:
 if __name__ == "__main__":
      
     #task1 = Task1()
-    homework = Homework2(alpha = 0.035)
+    homework_alpha_0035 = Homework2(alpha = 0.035)
+    #Functions.visualize_matrix_of_matrices(homework_alpha_0035.total_scattering_matrix, f"$\\hat{{S}}_{{tot}}$ (magnitude) for  $\\alpha = 0.000035$ ")
+    #Functions.visualize_matrix_of_matrices_complex(homework_alpha_0035.total_scattering_matrix, f"$\\hat{{S}}_{{tot}}$ (real and imaginary parts) for  $\\alpha = 0.000035$ ")
+    #homework_alpha_0 = Homework2(alpha = 0)
+    #Functions.visualize_matrix_of_matrices(homework_alpha_0.total_scattering_matrix, f"$\\hat{{S}}_{{tot}}$ (magnitude) for $\\alpha = 0$ ")
+    #Functions.visualize_matrix_of_matrices_complex(homework_alpha_0.total_scattering_matrix, f"$\\hat{{S}}_{{tot}}$ (real and imaginary parts) for  $\\alpha = 0$ ")
