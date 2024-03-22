@@ -1,133 +1,12 @@
-from matplotlib import pyplot as plt
-from typing import List, Optional, Tuple, Dict
 import numpy as np
-import random
-import matplotlib.pyplot as plt
-from scipy import constants as cnst
-from copy import copy
-import json
 import os
-    
-class Task1:
-    
-    C_L: float
-    C_R: float
-    C_g1: float
-    C_g2: float
-    C_12: float
-    E_C: np.ndarray
-    N_1: int
-    N_2: int
-    
-    def __init__(self) -> None:
-        
-        self.gen_Cs()
-        self.E_C = self.gen_E_C()
-        self.task_a()
-    
-    def task_a(self):
-        
-        # Calculate q's
-        
-        V_L = np.zeros((200, ))
-        V_R = np.zeros((200, ))
-        V_g1 = np.linspace(-.1, .10, 200)
-        V_g2 = np.linspace(-.10, .10, 200)      
-        
-        matrix = np.array([
-            [self.C_L, self.C_g1, 0, 0],
-            [0, 0, self.C_g2, self.C_R]
-        ])
-        
-        vector = np.array([
-            V_L, V_g1, V_g2, V_R
-        ]) 
-                
-        q_n = np.dot(
-            matrix, vector
-        )  
-        
-        q_1, q_2 = q_n[0], q_n[1]
-        
-        U = 0
-        
-        N = [np.ones(q_1.shape), np.ones(q_2.shape)]
-        N_1s = [0, 1, 2]
-        N_2s = [0, 1, 2]
-        
-        plt.figure(figsize=(8, 6))
-        
-        for N_1 in N_1s:
-            
-            U = 0
-            
-            for N_2 in N_2s:
-                
-                for i in range(2):
-                    
-                    for j in range(2):
-                    
-                        U += (
-                            self.E_C[i][j]
-                            * (N[i] * N_1 - q_n[i]/cnst.elementary_charge)
-                            * (N[j] * N_2 - q_n[j]/cnst.elementary_charge)
-                            )
-                        
-                plt.plot(U, U)
-        
+import json
+import random
+import scipy.constants as cnst
+from resources import Resources
+from typing import List, Optional, Tuple
 
-        
-        
 
-        plt.xlabel('V_g2')
-        plt.ylabel('V_g1')
-        plt.title('q_1 plot')
-        plt.show()
-
-        
-                
-                
-    
-    def gen_Cs(self):
-        
-        self.C_L = (
-            0.2 
-          * np.abs(cnst.elementary_charge) 
-          * 1e-3
-        )
-        
-        self.C_R = copy(self.C_L)
-        
-        self.C_g1 = (
-            0.3
-          * np.abs(cnst.elementary_charge)
-          * 1e-3
-        )
-        self.C_g2 = copy(self.C_g1)
-        
-        self.C_12 = 0
-    
-        self.C_1 = self.C_L + self.C_g1 + self.C_12
-        self.C_2 = copy(self.C_1)
-    
-    def gen_E_C(self):
-        
-        fraction = (
-            np.square(cnst.elementary_charge)
-          / (
-                2 * (self.C_1*self.C_2 - np.square(self.C_12))
-            )
-        )
-        
-        matrix = np.array([
-            [self.C_2, self.C_12],
-            [self.C_12, self.C_1]
-        ])
-        
-        E_C = fraction * matrix
-        
-        return E_C
- 
 class Task2:
     
     alpha: float
@@ -153,8 +32,9 @@ class Task2:
 
         # Generate the scattering matrix.
         self.scattering_matrix = self.generate_scattering_matrix()
-                
-    def iterate_n_times__with_random_coordinates(self, iterations: int, name: str) -> Tuple[List[float]]:
+         
+           
+    def iterate_n_times_with_random_coordinates(self, iterations: int, name: str) -> Tuple[List[float]]:
         """
         Calculates the total scattering matrix and channel conductance a given amount of times, 
         each time generating random scattering points and free spaces. For each iteration the channel conductance
@@ -207,7 +87,7 @@ class Task2:
         # Convert to numpy arrays
         conductances = np.array(conductances)
 
-        # Make a list of normalized conductance values with units e^2/h
+        # Make a list of normalized conductance values with units h/e^2
         normalized_conductances = (
             conductances / (np.square(cnst.elementary_charge) / cnst.h)
         )
@@ -346,6 +226,41 @@ class Task2:
 
         return matrices   
 
+    def calculate_transmission_probability(self) -> float:
+        
+        # Generate 600 randomly positioned x-coordinates of scattering 
+        # points and the 601 distances of free space in between them.
+        _, dist = self.generate_scattering_points_and_free_space()
+            
+        # Generate the 601 scattering matrices representing each
+        # region of free space inbetween the scattering points.
+        p_n = self.generate_p_n(dist)
+            
+        # Calculate the total scattering matrix of the channel
+        total_S_matrix = self.calculate_total_scattering_matrix(p_n)
+        
+        # Extract the t_tot coefficient from the total
+        # scattering matrix of the channel.
+        t_tot = total_S_matrix[0][0]
+        
+        # Take the conjugate transpose of t_tot matrix.
+        t_dagger = np.conjugate(t_tot).T
+        
+        # Calculate transmission matrix by matrix multiplying t with it's
+        # transposed conjugate.
+        T = np.matmul(t_dagger, t_tot)
+        
+        Resources.visualize_matrix(T)
+        
+        # Compute all eigenvalues of the transmission matrix. In theory
+        # these eigenvalues are real, but python will give you complex eigenvalues
+        # with very small imaginary parts, in the order of 1e-17 to 1e-20. I suspect
+        # these are numerical artifacts related to rounding errors and numerical prescision
+        # within python. Therefore the np.real() function is applied to discard the imaginary parts.
+        T_n = np.real(np.linalg.eigvals(T))
+        
+        return T_n
+         
     @staticmethod
     def calculate_conductance_from_scattering_matrix(S: np.ndarray) -> float:
         """
@@ -374,8 +289,6 @@ class Task2:
         # these are numerical artifacts related to rounding errors and numerical prescision
         # within python. Therefor the np.real() function is applied to discard the imaginary parts.
         T_n = np.real(np.linalg.eigvals(T))
-        
-        print(T_n)
         
         # Calculate the conductance, which is a product of the conductance quantum and
         # the sum of the eigenvalues of the transmission matrix T.
@@ -561,259 +474,3 @@ class Task2:
             k_m.append(k_i)  # Append the wavenumber to the list
         
         return k_m  # Return the list of wavenumbers
-
-class Resources:
-    
-    @staticmethod
-    def get_saved_plot(name: str) -> dict:
-        """
-        Load a saved dictionary of conductances versus iterations from a JSON file.
-
-        Parameters:
-            name (str): Name of the file to be loaded. Do not include path, just filename
-            without the .json suffix.
-
-        Returns:
-            dict: A dictionary containing conductances and their corresponding iterations.
-        """
-        # Load the plot dictionary from the JSON file
-        with open(f"Results/saved_plots/{name}.json", "r") as json_file:
-            plot = json.load(json_file)
-        
-        return plot
-
-    @staticmethod
-    def plot_conductances(calculated_values: dict, normalized: bool = True) -> None:
-        """
-        Plot conductances versus iterations as well as mean, standard deviation and variance.
-
-        Parameters:
-            plot (dict): A dictionary containing conductances and their corresponding iterations.
-            
-        Returns:
-            None
-        """
-        # Define font properties
-        font = {
-            'family': 'serif', 
-            'color': 'darkred', 
-            'weight': 'normal', 
-            'size': 16
-        }
-
-        # Make the plot
-        plt.figure(figsize=(18, 7))
-        
-        # Set xlabel, ylabel and title of the plot
-        plt.xlabel(
-            'Iterations', 
-            fontsize=30, 
-            fontdict=font
-        )
-        plt.ylabel(
-            'Conductance [$\\frac{e^2}{h}$]' 
-            if normalized else 
-            "Conductance [$\\Omega^{-1}$]", 
-            fontsize=30, 
-            fontdict=font
-        )
-        plt.title(
-            f'Conductance pr. iteration - $\\alpha$ = 0.035', 
-            fontsize=35, 
-            fontdict=font, 
-            y=1.05
-        )
-
-        # Plot the mean as a black line
-        plt.axhline(
-            calculated_values["normalized mean"]
-            if normalized else
-            calculated_values["mean"], 
-            color = 'green', 
-            linestyle = '--', 
-            label = 'Mean',
-            linewidth = 1
-        )
-        # Plot standard deviation and variance as opaque regions
-        plt.axhspan(
-            calculated_values["normalized mean"] - calculated_values["normalized standard deviation"]
-            if normalized else
-            calculated_values["mean"] - calculated_values["standard deviation"], 
-            calculated_values["normalized mean"] + calculated_values["normalized standard deviation"]
-            if normalized else
-            calculated_values["mean"] + calculated_values["standard deviation"], 
-            color = 'blue', 
-            alpha = 0.2, 
-            label = 'Standard Deviation'
-        )
-        plt.axhspan(
-            calculated_values["normalized mean"] - calculated_values["normalized variance"]
-            if normalized else
-            calculated_values["mean"] - calculated_values["variance"], 
-            calculated_values["normalized mean"] + calculated_values["normalized variance"]
-            if normalized else
-            calculated_values["mean"] + calculated_values["variance"], 
-            color = 'red', 
-            alpha = 0.3, 
-            label = 'Variance'
-        )
-
-        # Plot the conductance values
-        plt.scatter(
-            calculated_values["iterations"], 
-            calculated_values["normalized conductances"]
-            if normalized else
-            calculated_values["conductances"], 
-            label="Conductance", 
-            color="black",
-            s = 7
-        )
-
-        # Set some parameters
-        #plt.ylim(29.5, 30.5)
-        plt.xticks(fontsize=15)
-        plt.yticks(fontsize=15)
-        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-        plt.legend(fontsize=20)
-        
-        # Show plot
-        plt.show()
- 
-    @staticmethod
-    def visualize_matrix(mat: np.ndarray) -> None:
-        """
-        Visualize a matrix.
-
-        This method plots the absolute values of the input matrix.
-
-        Args:
-            mat (np.ndarray): The input matrix.
-        """
-        plt.imshow(np.abs(mat), cmap='viridis')
-        plt.colorbar(label='Absolute Value')
-        plt.show()
-
-    @staticmethod
-    def randint_x_chance_for_target(chance: float, target: int, interval: Optional[Tuple[int]] = (1, 30)) -> int:
-        """
-        Generate a random integer with a certain chance of being the target.
-
-        This method generates a random integer within the specified interval
-        with a given probability for it to be the target number.
-
-        Args:
-            chance (float): The probability of generating the target number.
-            target (int): The target number.
-            interval (Tuple[int], optional): The interval for generating random numbers. Defaults to (1, 30).
-
-        Returns:
-            int: The randomly generated integer.
-        """
-        random_percentage = random.uniform(0, 1)
-        if random_percentage <= chance:
-            return target
-        else:
-            while True:
-                random_number = random.randint(*interval)
-                if random_number != target:
-                    return random_number
-
-    @staticmethod
-    def visualize_matrix_of_matrices(matrices: np.ndarray, title: str) -> None:
-        """
-        Visualize a matrix of matrices.
-
-        This method plots a matrix of matrices, where each element of the input
-        matrices array is a matrix itself.
-
-        Args:
-            matrices (np.ndarray): The input matrix of matrices.
-            title (str): The title of the plot.
-        """
-        
-        subplot_titles = [
-            ['$t_{tot}$', "$r'_{tot}$"],
-            ["$r_{tot}$", "$t'_{tot}$"]
-        ]
-        
-        num_rows, num_cols = matrices.shape[0], matrices.shape[1]
-        fig, axs = plt.subplots(num_rows, num_cols, figsize=(10, 8))
-        
-        for i in range(num_rows):
-            for j in range(num_cols):
-                im = axs[i, j].imshow(np.abs(matrices[i, j]), cmap='viridis')
-                axs[i, j].axis('off')
-                axs[i, j].set_title(subplot_titles[i][j])
-                cbar = fig.colorbar(im, ax=axs[i, j], label="Magnitude")
-                cbar.ax.yaxis.get_offset_text().set_fontsize(5)
-                
-        fig.suptitle(title)
-        plt.tight_layout()
-        plt.show()
-
-    @staticmethod
-    def visualize_matrix_of_matrices_complex(matrices: np.ndarray, title: str) -> None:
-        """
-        Visualize a matrix of complex matrices.
-
-        This method plots a matrix of matrices, where each element of the input
-        matrices array is a complex matrix itself.
-
-        Args:
-            matrices (np.ndarray): The input matrix of complex matrices.
-            title (str): The title of the plot.
-        """
-        subplot_titles = [
-            ['$t_{tot}$', "$r'_{tot}$"],
-            ["$r_{tot}$", "$t'_{tot}$"]
-        ]
-        
-        num_rows, num_cols = matrices.shape[0], matrices.shape[1]
-        fig, axs = plt.subplots(num_rows, num_cols * 2, figsize=(15, 30))
-        
-        
-        for i in range(num_rows):
-            for j in range(num_cols):
-                # Plot real part
-                im_real = axs[i, 2*j].imshow(np.real(matrices[i, j]), cmap='viridis')
-                axs[i, 2*j].axis('off')
-                cbar_r = fig.colorbar(im_real, ax=axs[i, 2*j], label="Real Part", shrink=0.45)
-                cbar_r.ax.yaxis.get_offset_text().set_fontsize(5)
-                
-                # Plot imaginary part
-                im_imag = axs[i, 2*j+1].imshow(np.imag(matrices[i, j]), cmap='viridis')
-                axs[i, 2*j+1].axis('off')
-                cbar_i = fig.colorbar(im_imag, ax=axs[i, 2*j+1], label="Imaginary Part", shrink=0.45)
-                cbar_i.ax.yaxis.get_offset_text().set_fontsize(5)
-                
-                # Set subplot titles
-                axs[i, 2*j].set_title(f"$Re${{{subplot_titles[i][j]}}}")
-                axs[i, 2*j+1].set_title(f"$Im${{{subplot_titles[i][j]}}}")
-        
-        fig.suptitle(title)
-        plt.tight_layout()
-        plt.show()
-        
-   
-if __name__ == "__main__":
-    
-    # Initialize with alpha = 0.035
-    #alpha_0_035 = Task2(alpha = 0.035)
-    
-    # Do a run of 200 iterations with alpha = 0.035
-    #alpha_0_035.iterate_n_times__with_random_coordinates(
-    #    iterations = 200, 
-    #    name = "200_alpha_0_035"
-    #)
-    Resources.plot_conductances(Resources.get_saved_plot("200_alpha_0_035"), normalized=False)
-    # Initialize with alpha = 0.035
-    #alpha_0 = Task2(alpha = 0)
-    
-    # Do a run of 200 iteration with alpha = 0
-    #alpha_0.iterate_n_times__with_random_coordinates(
-    #    iterations = 3, 
-    #    name = "200_alpha_0"
-    #)
-
-    
-
