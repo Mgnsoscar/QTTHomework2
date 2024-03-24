@@ -7,3 +7,4 @@ normalized conductances:	[29.999999999999975, 29.999999999999982, 29.99999999999
 normalized standard deviation:	1.5120960444669448e-14
 normalized variance:	2.2864344476925804e-28
 normalized mean:	29.999999999999968
+z

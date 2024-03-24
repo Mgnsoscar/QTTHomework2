@@ -54,14 +54,14 @@ class Resources:
             fontdict=font
         )
         plt.ylabel(
-            'Conductance [$\\frac{e^2}{h}$]' 
+            'Conductance [$2\\frac{e^2}{h}$]' 
             if normalized else 
             "Conductance [$\\Omega^{-1}$]", 
             fontsize=30, 
             fontdict=font
         )
         plt.title(
-            f'Conductance pr. iteration - $\\alpha$ = 0.035', 
+            f'Conductance pr. iteration - $\\alpha$ = 0', 
             fontsize=35, 
             fontdict=font, 
             y=1.05
@@ -113,7 +113,7 @@ class Resources:
         )
 
         # Set some parameters
-        #plt.ylim(29.5, 30.5)
+        plt.ylim(29.5, 30.5)
         plt.xticks(fontsize=15)
         plt.yticks(fontsize=15)
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)
@@ -137,7 +137,7 @@ class Resources:
         
         plt.imshow(np.abs(mat), cmap='viridis')
         plt.colorbar(label='Transmission probability')
-        plt.title("$\\hat{T}_{tot_{nm}}$ for $\\alpha = 0$", fontsize=18)  # Increase title font size
+        plt.title("$\\hat{T}_{tot_{nm}}$ for $\\alpha = 0.035$", fontsize=18)  # Increase title font size
         plt.xlabel('$n$', fontsize=14)  # Add x-axis label with font size
         plt.ylabel('$m$', fontsize=14)  # Add y-axis label with font size
         plt.xticks(fontsize=12)  # Increase tick label font size

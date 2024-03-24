@@ -32,8 +32,36 @@ class Task2:
 
         # Generate the scattering matrix.
         self.scattering_matrix = self.generate_scattering_matrix()
-         
-           
+       
+    def inchoherent_transport(self) -> np.ndarray:
+    
+        new_S = np.square(np.abs(self.scattering_matrix))
+        
+        subcalculation = new_S
+        for i in range(599):
+                
+            subcalculation = self.smack_together_two_scattering_matrices(
+                new_S, subcalculation
+            )
+                    
+            #print(np.linalg.eigvals(T_tot))
+            
+        T_tot = subcalculation[0][0]
+            
+        T_n = [T_tot[i][i] for i in range(T_tot.shape[0])]
+        
+        conductance = 2 * (cnst.elementary_charge**2/cnst.h) * np.sum(T_n)
+        
+        # Make a list of normalized conductance values with units h/e^2
+        normalized_conductances = (
+            conductance / ( 2* (np.square(cnst.elementary_charge) / cnst.h))
+        )
+        
+        print(conductance)
+        print(normalized_conductances) 
+        
+        Resources.visualize_matrix(T_tot)    
+      
     def iterate_n_times_with_random_coordinates(self, iterations: int, name: str) -> Tuple[List[float]]:
         """
         Calculates the total scattering matrix and channel conductance a given amount of times, 
@@ -89,7 +117,7 @@ class Task2:
 
         # Make a list of normalized conductance values with units h/e^2
         normalized_conductances = (
-            conductances / (np.square(cnst.elementary_charge) / cnst.h)
+            conductances / ( 2* (np.square(cnst.elementary_charge) / cnst.h))
         )
         
         # Store the calculated conductances and statistical values
@@ -227,38 +255,43 @@ class Task2:
         return matrices   
 
     def calculate_transmission_probability(self) -> float:
-        
-        # Generate 600 randomly positioned x-coordinates of scattering 
-        # points and the 601 distances of free space in between them.
+        """
+        Calculates the transmission probability through a channel.
+
+        This method performs the following steps:
+        1. Generates randomly positioned scattering points and calculates
+           the distances of free space between them.
+        2. Generates scattering matrices representing each region of free space.
+        3. Calculates the total scattering matrix of the channel.
+        4. Extracts the t_tot coefficient from the total scattering matrix.
+        5. Computes the transmission matrix.
+        6. Computes eigenvalues of the transmission matrix and returns the real part.
+
+        Returns:
+            float: Transmission probability.
+
+        Note:
+            Eigenvalues are theoretically real, but may contain small imaginary parts
+            due to numerical precision in Python, typically in the order of 1e-17 to 1e-20.
+            These are considered as numerical artifacts and are removed by taking the real part.
+
+        """
+        # Step 1: Generate scattering points and distances
         _, dist = self.generate_scattering_points_and_free_space()
-            
-        # Generate the 601 scattering matrices representing each
-        # region of free space inbetween the scattering points.
+
+        # Step 2: Generate scattering matrices for each region of free space
         p_n = self.generate_p_n(dist)
-            
-        # Calculate the total scattering matrix of the channel
+
+        # Step 3: Calculate the total scattering matrix
         total_S_matrix = self.calculate_total_scattering_matrix(p_n)
-        
-        # Extract the t_tot coefficient from the total
-        # scattering matrix of the channel.
+
+        # Step 4: Extract t_tot coefficient from the total scattering matrix
         t_tot = total_S_matrix[0][0]
-        
-        # Take the conjugate transpose of t_tot matrix.
-        t_dagger = np.conjugate(t_tot).T
-        
-        # Calculate transmission matrix by matrix multiplying t with it's
-        # transposed conjugate.
-        T = np.matmul(t_dagger, t_tot)
-        
-        Resources.visualize_matrix(T)
-        
-        # Compute all eigenvalues of the transmission matrix. In theory
-        # these eigenvalues are real, but python will give you complex eigenvalues
-        # with very small imaginary parts, in the order of 1e-17 to 1e-20. I suspect
-        # these are numerical artifacts related to rounding errors and numerical prescision
-        # within python. Therefore the np.real() function is applied to discard the imaginary parts.
-        T_n = np.real(np.linalg.eigvals(T))
-        
+
+        T_tot = np.square(np.abs(t_tot))
+
+        T_n = [T_tot[i][i] for i in range(T_tot.shape[0])]
+
         return T_n
          
     @staticmethod
@@ -293,7 +326,7 @@ class Task2:
         # Calculate the conductance, which is a product of the conductance quantum and
         # the sum of the eigenvalues of the transmission matrix T.
         conductance = (
-            (np.square(cnst.elementary_charge) / cnst.h) * np.sum(T_n)
+            2* (np.square(cnst.elementary_charge) / cnst.h) * np.sum(T_n)
         )
         
         return conductance
@@ -474,3 +507,9 @@ class Task2:
             k_m.append(k_i)  # Append the wavenumber to the list
         
         return k_m  # Return the list of wavenumbers
+
+if __name__ == "__main__":
+    
+    task2 = Task2(alpha = 0.035)
+    task2.iterate_n_times_with_random_coordinates(200, "200_alpha_0")
+    
