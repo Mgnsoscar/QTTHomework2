@@ -96,8 +96,7 @@ class Task1:
         )
         
         return numerator / denominator
-    
-        
+           
     def stability_diagram_task_a(self, function_for_Vg1, function_for_Vg2) -> None:
         """
         Plot V_g1 vs V_g2 for various (N_1, N_2) configurations.
